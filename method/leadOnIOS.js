@@ -1,72 +1,137 @@
-module.exports = {
-    loadUrl: async function(page,url){
-        await page.goto(url, {waitUntil:'networkidle0'})
-    },
-    shouldExist: async function(page,selector){
-        try {
-            await page.waitForSelector(selector)
-        } catch (error) {
-            throw new Error('connot should exitst : ' + selector)
-        }
-    },
-    click: async function(page, selector){
-        try{
-          await page.waitForSelector(selector)
-          await page.click(selector)
+const config = require('../lib/config')
+const helper = require('../lib/helpers')
+const Utility = require('../lib/utils')
+const loginPage = require('../page-object/login')
+const elemleadOnIOS = require('../page-object/elem_leadonios')
 
-        } catch(error){
-            throw new Error('Could not click on selector : ' + selector)
+module.exports = {
+    login: async function(page){
+        try {
+            await helper.loadUrl(page,config.baseUrl)
+            await helper.typeText(page,config.user,loginPage.userName)
+            await helper.typeText(page,config.pw,loginPage.password)
+            await helper.click(page,loginPage.sigIn)
+            await helper.waitForText(page,'body','IOS',)
+            await page.screenshot({path: 'SASpage.png'})
+        } catch (error) {
+           throw new error('Can not log-in User' + loginPage.UserName ) 
         }
     },
-    typeText: async function(page, text, selector){
+    gotoLeadOnIOS: async function(page){
         try {
-            await page.waitForSelector(selector)
-            await page.type(selector,text)
+            await helper.waitForText(page,'body','IOS',{ timeout : 1000})
+            await page.waitForSelector(elemleadOnIOS.gotoIOS)
+            await helper.click(page,elemleadOnIOS.gotoIOS)
+            await helper.click(page,elemleadOnIOS.dropdownLead)
+            await helper.click(page,elemleadOnIOS.checkCustomer)
+            await page.screenshot({path: 'gotoLeadOnIOS.png'})
         } catch (error) {
-            throw new Error('Could not type text on selector : ' + selector)
+            throw new error('Can not go to LeadOnIOS' )
         }
     },
-    getText: async function(page,selector){
+    addNewCutomer: async function(page){
         try {
-            await page.waitForSelector(selector)
-            return page.$eval(selector, e => e.innerHtml)
+            await helper.selectFrameclick(page,leadOnIOS.clickAddCutomer)
+            await page.screenshot({path: 'addNewCutomer.png'})
         } catch (error) {
-            throw new Error('cannot get text from selector : ' + selector)
+            throw new error('Can not go to LeadOnIOS' )
         }
     },
-    getCount: async function(page,selector){
+    infoNewCutomer: async function(page,name){
         try {
-            await page.waitForSelector(selector)
-            return page.$$eval( selector, items => items.length)
+            await page.waitFor(500)
+            await helper.selectFrameclick(page,elemleadOnIOS.clickAddCutomer)
+            await helper.selectFrametypeText(page,name,elemleadOnIOS.addName)
+            await page.waitFor(500)
+            await helper.selectFrametypeText(page,Utility.generateNumbers(),elemleadOnIOS.addTel)
+            await helper.selectFrameclick(page,elemleadOnIOS.clickSaveAsNewCS) 
+            await helper.acceptAlert(page)
         } catch (error) {
-            throw new Error('cannot get count of selector :' + selector )
+            throw new error('input information NewCutomer' )
         }
     },
-    waitForText: async function(page, selector, text){
+    addNewLead: async function(page){
         try {
-            await page.waitForSelector(selector)
-            await page.waitForFunction((selector, text) =>
-                document.querySelector(selector).innerText.includes(text),
-                {},
-                selector,
-                text
-            )
+            const frame = await helper.selectFrame(page)
+            await helper.selectFrameclick(page,elemleadOnIOS.chooseJobs)
+
+            await frame.$eval(elemleadOnIOS.chooseTopic, el => el.value = "29")
+            await frame.waitForSelector(elemleadOnIOS.chooseChanal)
+
+            await frame.$eval(elemleadOnIOS.chooseChanal, el => el.value = "1")
+            await frame.waitForSelector('#btnSave')
+
+            await helper.selectFrameclick(page,'#btnSave') 
+            await helper.acceptAlert(page)
+            await frame.waitForSelector('#btnFollowGroupRequestDetail')  
+            await helper.selectFrameclick(page,'#btnFollowGroupRequestDetail')
+
         } catch (error) {
-            throw new Error('text: ' + text + ' not found for selector '+ selector)
+            console.log(error)
+            throw new error('input information NewCutomer' )
         }
     },
-    pressKey: async function(page,key){
+    InputDetailToIOS: async function(page,prod,subprod){
         try {
-            await page.keyboard.press(key)
+            const frame = await helper.selectFrame(page)
+            await page.waitFor(2000)
+            await frame.waitForSelector('[onclick^="openRequestDetailHistory"]', { delay: 200 })
+            //1.//
+            const workid = await frame.evaluate(() => document.querySelector('[onclick^="openRequestDetailHistory"]').innerHTML);
+
+            await frame.evaluate((workid,prod) => {
+                $(`#trRequestDetail${workid} td:eq(1) select`).val(`${prod}`);
+                $(`#trRequestDetail${workid} td:eq(1) select`).change();
+            },workid,prod)
+            await page.waitFor(500)
+            await frame.evaluate((workid,subprod) => {
+                $(`#trRequestDetail${workid} select[style*='width: 95%;']:eq(1)`).val(`${subprod}`);
+                $(`#trRequestDetail${workid} select[style*='width: 95%;']:eq(1)`).change();
+            },workid,subprod)
+            await helper.selectFrameclick(page,'#btnLeadDetailSubmit');
         } catch (error) {
-            throw new Error('Could not press key: ' + key + 'on the keybroad')
+            console.log(error) 
         }
     },
-    shouldExist: async function(page,selector){
+    searchJobOnLeadOnIOS: async function(page,name){
         try {
-            await page.waitForSelector(selector)
+            await helper.selectFrameclick(page,'#rdoAllBranchsItemType')
+            await helper.selectFrametypeText(page,name,'#txtSearchFirstName')
+            await helper.selectFrameclick(page,'#btnSearch')
         } catch (error) {
-            throw new Error('connot should exitst : ' + selector)
+            console.log(error)
+            throw new error('can not search jobs' )
         }
-    }
+    },
+    clickSymbolGoToIOS: async function(page){
+        try {
+            await helper.selectFrameclick(page,'[src="/img/iconTransfer.png"]')
+        } catch (error) {
+            throw new error('can not click symbolGoToIOS ' )
+        }
+    },
+    cutomInfo_withoutLicense: async function(page,cityzen,lname,plic,llic,dob,titlekey){
+        try {
+            const frame = await helper.selectFrame(page)
+            await frame.waitForSelector('[data-btn="on"]', { timeout: 1000 })
+            await frame.evaluate(()=>{$('[data-btn="on"]').click()})
+
+            await page.waitFor(1000)
+            await frame.waitForSelector('#btModalSave', {timeout: 1000});
+            await frame.evaluate((cityzen,lname,plic,llic,dob,titlekey) => {
+                $('#txtCustCitizenId').val(`${cityzen}`)
+                $('#txtCustLastNameTH').val(`${lname}`)
+                $('[data-field="carLicensePrefix"]').val(`${plic}`)
+                $('[data-field="carLicenseNo"]').val(`${llic}`)
+                $('.hasDatepicker').datepicker('setDate', `${dob}`)
+                $('[data-field="titleKey"]').val(`${titlekey}`)
+                $('#btModalSave').click()
+
+            },cityzen,lname,plic,llic,dob,titlekey)
+        } catch (error) {
+            console.log(error)
+        }
+    },
 }
+
+
